@@ -8,6 +8,7 @@ import 'dart:io';
 
 import 'package:mime/mime.dart';
 import 'package:path/path.dart';
+import 'file_provider.dart';
 
 // Used for signal a directory redirecting, where a tailing slash is missing.
 class _DirectoryRedirect {
@@ -21,6 +22,7 @@ class _DirectoryRedirect {
 /// file-system links, correct mime-types and custom error pages.
 class VirtualDirectory {
   final String root;
+  final HLFileProvider hlFileProvider;
 
   /// Whether to allow listing files in a directories.
   ///
@@ -62,7 +64,7 @@ class VirtualDirectory {
   /// be trimmed from the requests uri, before locating the actual resource.
   /// If the requests uri doesn't start with [pathPrefix], a 404 response is
   /// generated.
-  VirtualDirectory(this.root, {String pathPrefix})
+  VirtualDirectory(this.root, this.hlFileProvider, {String pathPrefix})
       : _pathPrefixSegments = _parsePathPrefix(pathPrefix);
 
   /// Serve a [Stream] of [HttpRequest]s, in this [VirtualDirectory].
@@ -71,7 +73,21 @@ class VirtualDirectory {
 
   /// Serve a single [HttpRequest], in this [VirtualDirectory].
   Future serveRequest(HttpRequest request) async {
-    var iterator = request.uri.pathSegments.iterator;
+    //替换路径
+//    var paths = request.uri.pathSegments;
+//    var paths = List<String>();
+//    request.uri.pathSegments.forEach((element) {
+//      paths.add(element);
+//    });
+//    print(paths);
+//    if (paths.length > 0) {
+//      paths[paths.length - 1] = "test.html";
+//    }
+//    print(paths);
+
+    var paths = hlFileProvider.getUriRealPath(request.uri);
+
+    var iterator = paths.iterator;
     for (var segment in _pathPrefixSegments) {
       if (!iterator.moveNext() || iterator.current != segment) {
         _serveErrorPage(HttpStatus.notFound, request);
@@ -240,7 +256,7 @@ class VirtualDirectory {
                 await file
                     .openRead(start, end + 1)
                     .cast<List<int>>()
-                    .pipe(_VirtualDirectoryFileStream(response, file.path));
+                    .pipe(_VirtualDirectoryFileStream(response, hlFileProvider, file.path));
               } catch (_) {
                 // TODO(kevmoo): log errors
               }
@@ -258,7 +274,7 @@ class VirtualDirectory {
           await file
               .openRead()
               .cast<List<int>>()
-              .pipe(_VirtualDirectoryFileStream(response, file.path));
+              .pipe(_VirtualDirectoryFileStream(response, hlFileProvider, file.path));
         } catch (_) {
           // TODO(kevmoo): log errors
         }
@@ -395,14 +411,20 @@ $server
 
 class _VirtualDirectoryFileStream extends StreamConsumer<List<int>> {
   final HttpResponse response;
+  final HLFileProvider hlFileProvider;
   final String path;
   List<int> buffer = [];
 
-  _VirtualDirectoryFileStream(this.response, this.path);
+  _VirtualDirectoryFileStream(this.response, this.hlFileProvider, this.path);
 
   @override
   Future addStream(Stream<List<int>> stream) {
     stream.listen((data) {
+      data = hlFileProvider.decodeData(data, path);
+//      for (var i = 0; i < data.length; i++) {
+//        data[i] = data[i] ^ 111;
+//      }
+
       if (buffer == null) {
         response.add(data);
         return;

@@ -54,7 +54,7 @@
 ///
 /// See [VirtualHost] for more information.
 library http_server;
-
+import 'src/file_provider.dart';
 import 'src/virtual_directory.dart';
 import 'src/virtual_host.dart';
 
@@ -62,3 +62,4 @@ export 'src/http_body.dart';
 export 'src/http_multipart_form_data.dart';
 export 'src/virtual_directory.dart';
 export 'src/virtual_host.dart';
+export 'src/file_provider.dart';
