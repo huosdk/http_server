@@ -14,6 +14,8 @@ class HLFileProvider {
   List<String> getUriRealPath(Uri uri) {
     if (isRequireRealPath(uri.path)) {
       return pathMap[uri.path].split("/");
+    } else if (isRequireRealPath(Uri.decodeComponent(uri.path))) {
+      return pathMap[Uri.decodeComponent(uri.path)].split("/");
     }
     return uri.pathSegments;
   }
